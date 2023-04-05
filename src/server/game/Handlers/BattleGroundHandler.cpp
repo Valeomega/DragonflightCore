@@ -789,8 +789,21 @@ void WorldSession::HandleJoinSkirmish(WorldPackets::Battleground::JoinSkirmish& 
     }
     else
     {
-        if (grp->GetLeaderGUID() != _player->GetGUID())
+        if (grp == NULL)
+        {
+            WorldPackets::Battleground::BattlefieldStatusFailed battlefieldStatus;
+            sBattlegroundMgr->BuildBattlegroundStatusFailed(&battlefieldStatus, bgQueueTypeId, _player, 0, ERR_LFG_CANT_USE_BATTLEGROUND);
+            SendPacket(battlefieldStatus.Write());
             return;
+        }
+
+        if (grp->GetLeaderGUID() != _player->GetGUID())
+        {
+            WorldPackets::Battleground::BattlefieldStatusFailed battlefieldStatus;
+            sBattlegroundMgr->BuildBattlegroundStatusFailed(&battlefieldStatus, bgQueueTypeId, _player, 0, ERR_LFG_CANT_USE_BATTLEGROUND);
+            SendPacket(battlefieldStatus.Write());
+            return;
+        }
 
         ObjectGuid errorGuid;
         err = grp->CanJoinBattlegroundQueue(bg, bgQueueTypeId, arenatype, bg->GetMaxPlayersPerTeam(), false, 0, errorGuid);
