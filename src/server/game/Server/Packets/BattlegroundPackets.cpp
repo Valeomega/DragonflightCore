@@ -416,11 +416,11 @@ WorldPacket const* WorldPackets::Battleground::CapturePointRemoved::Write()
     return &_worldPacket;
 }
 
-WorldPacket const* WorldPackets::Battleground::JoinSkirmish::Read()
+void WorldPackets::Battleground::JoinSkirmish::Read()
 {
-    JoinAsGroup = _worldPacket.ReadBool();
-    UnkBool = _worldPacket.ReadBool();
+    JoinAsGroup = _worldPacket.ReadBit();
+    UnkBool = _worldPacket.ReadBit();
     Roles = _worldPacket.ReadBit();
-    Bracket = (BracketType)_worldPacket.ReadBit();
+    _worldPacket >> Bracket;
 }
 

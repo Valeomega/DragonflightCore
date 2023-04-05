@@ -746,7 +746,7 @@ void WorldSession::HandleJoinSkirmish(WorldPackets::Battleground::JoinSkirmish& 
         return;
 
     GroupJoinBattlegroundResult err = ERR_BATTLEGROUND_NONE;
-    Group const* grp = _player->GetGroup();
+    grp = _player->GetGroup();
 
     if (!grp)
     {

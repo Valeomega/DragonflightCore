@@ -185,7 +185,7 @@ enum ArenaType
     ARENA_TYPE_5v5          = 5
 };
 
-enum BracketType
+enum BracketType : uint8
 {
     ARENA_2 = 0,
     ARENA_3 = 1,

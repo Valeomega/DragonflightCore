@@ -558,7 +558,7 @@ namespace WorldPackets
             void Read() override;
 
             uint8 Roles = 0;
-            BracketType Bracket;
+            int8 Bracket = 0;
             bool JoinAsGroup = false;
             bool UnkBool = false;
         };
