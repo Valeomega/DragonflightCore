@@ -638,7 +638,7 @@ void WorldSession::HandleGetPVPOptionsEnabled(WorldPackets::Battleground::GetPVP
     pvpOptionsEnabled.WargameArenas = false;
     pvpOptionsEnabled.RatedArenas = false;
     pvpOptionsEnabled.WargameBattlegrounds = false;
-    pvpOptionsEnabled.ArenaSkirmish = false;
+    pvpOptionsEnabled.ArenaSkirmish = true;
     pvpOptionsEnabled.PugBattlegrounds = true;
     pvpOptionsEnabled.RatedBattlegrounds = false;
     SendPacket(pvpOptionsEnabled.Write());
