@@ -599,6 +599,7 @@ class TC_GAME_API Spell
         bool IsFocusDisabled() const;
         bool IsProcDisabled() const;
         bool IsChannelActive() const;
+        bool IsTriggeredAllowProc() const;
         bool IsAutoActionResetSpell() const;
         bool IsPositive() const;
 

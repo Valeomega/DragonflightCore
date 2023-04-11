@@ -29,6 +29,7 @@
 #include "SpellHistory.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
+#include "SpellDefines.h"
 
 enum EvokerSpells
 {
@@ -38,7 +39,11 @@ enum EvokerSpells
     SPELL_EVOKER_LIVING_FLAME              = 361469,
     SPELL_EVOKER_LIVING_FLAME_DAMAGE       = 361500,
     SPELL_EVOKER_LIVING_FLAME_HEAL         = 361509,
-    SPELL_EVOKER_SOAR_RACIAL               = 369536
+    SPELL_EVOKER_SOAR_RACIAL               = 369536,
+    SPELL_EVOKER_Visage                    = 372014,
+    SPELL_EVOKER_CALL_OF_YSERA_AURA        = 373835,
+    SPELL_EVOKER_PANACEA                   = 387761,
+    SPELL_EVOKER_PANACEA_HEAL              = 387763
 };
 
 // 362969 - Azure Strike (blue)
@@ -75,6 +80,9 @@ class spell_evo_glide : public SpellScript
 
         if (!caster->IsFalling())
             return SPELL_FAILED_NOT_ON_GROUND;
+
+        if (caster->HasAura(SPELL_EVOKER_Visage))
+            return SPELL_FAILED_DONT_REPORT;
 
         return SPELL_CAST_OK;
     }
@@ -139,8 +147,25 @@ class spell_evo_living_flame : public SpellScript
     }
 };
 
+class spell_evoker_panacea : SpellScript
+{
+    PrepareSpellScript(spell_evoker_panacea);
+
+    void HandleOnHit()
+    {
+        Player* player = GetCaster()->ToPlayer();
+        if (player->HasSpell(SPELL_EVOKER_PANACEA))
+            player->CastSpell(player, SPELL_EVOKER_PANACEA_HEAL, TRIGGERED_ALLOW_PROC);
+    }
+    void Register() override
+    {
+        OnHit += SpellHitFn(spell_evoker_panacea::HandleOnHit);
+    }
+};
+
 void AddSC_evoker_spell_scripts()
 {
+    RegisterSpellScript(spell_evoker_panacea);
     RegisterSpellScript(spell_evo_azure_strike);
     RegisterSpellScript(spell_evo_glide);
     RegisterSpellScript(spell_evo_living_flame);
