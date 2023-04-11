@@ -147,7 +147,7 @@ class spell_evo_living_flame : public SpellScript
     }
 };
 
-class spell_evoker_panacea : SpellScript
+class spell_evoker_panacea : public SpellScript
 {
     PrepareSpellScript(spell_evoker_panacea);
 
@@ -157,6 +157,7 @@ class spell_evoker_panacea : SpellScript
         if (player->HasSpell(SPELL_EVOKER_PANACEA))
             player->CastSpell(player, SPELL_EVOKER_PANACEA_HEAL, TRIGGERED_ALLOW_PROC);
     }
+
     void Register() override
     {
         OnHit += SpellHitFn(spell_evoker_panacea::HandleOnHit);

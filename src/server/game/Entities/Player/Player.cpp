@@ -13967,6 +13967,9 @@ void Player::PrepareGossipMenu(WorldObject* source, uint32 menuId, bool showQues
                     if (!HasPlayerFlag(PLAYER_FLAGS_NO_XP_GAIN) || IsMaxLevel())
                         canTalk = false;
                     break;
+                case GossipOptionNpc::ChromieTimeNpc:
+                    canTalk = false;
+                    break;
                 case GossipOptionNpc::None:
                 case GossipOptionNpc::Vendor:
                 case GossipOptionNpc::Trainer:
