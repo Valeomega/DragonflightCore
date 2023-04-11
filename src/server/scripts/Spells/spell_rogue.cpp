@@ -131,11 +131,6 @@ class spell_rog_blade_flurry : public AuraScript
 {
     PrepareAuraScript(spell_rog_blade_flurry);
 
-    bool Validate(SpellInfo const* /*spellInfo*/) override
-    {
-        return ValidateSpellInfo({ SPELL_ROGUE_BLADE_FLURRY_EXTRA_ATTACK });
-    }
-
     bool CheckProc(ProcEventInfo& eventInfo)
     {
         _procTarget = GetTarget()->SelectNearbyTarget(eventInfo.GetProcTarget());
