@@ -33,6 +33,8 @@
 
 enum EvokerSpells
 {
+    SPELL_EVOKER_ANIMOSITY                 = 375797,
+    SPELL_EVOKER_DRAGONRAGE                = 375087,
     SPELL_EVOKER_ENERGIZING_FLAME          = 400006,
     SPELL_EVOKER_GLIDE_KNOCKBACK           = 358736,
     SPELL_EVOKER_HOVER                     = 358267,
@@ -42,6 +44,8 @@ enum EvokerSpells
     SPELL_EVOKER_SOAR_RACIAL               = 369536,
     SPELL_EVOKER_Visage                    = 372014,
     SPELL_EVOKER_CALL_OF_YSERA_AURA        = 373835,
+    SPELL_EVOKER_JUST_IN_TIME              = 376204,
+    SPELL_EVOKER_BRONZE_TIME_DILATION      = 357170,
     SPELL_EVOKER_PANACEA                   = 387761,
     SPELL_EVOKER_PANACEA_HEAL              = 387763
 };
@@ -164,8 +168,26 @@ class spell_evoker_panacea : public SpellScript
     }
 };
 
+class spell_evoker_just_in_time : public SpellScript
+{
+    PrepareSpellScript(spell_evoker_just_in_time);
+
+    void HandleOnCast()
+    {
+        Unit* caster = GetCaster();
+        if (Aura* aura = caster->GetAura(SPELL_EVOKER_JUST_IN_TIME))
+            caster->GetSpellHistory()->ModifyCooldown(SPELL_EVOKER_BRONZE_TIME_DILATION, Seconds(2));
+    }
+
+    void Register() override
+    {
+        OnCast += SpellCastFn(spell_evoker_just_in_time::HandleOnCast);
+    }
+};
+
 void AddSC_evoker_spell_scripts()
 {
+    RegisterSpellScript(spell_evoker_just_in_time);
     RegisterSpellScript(spell_evoker_panacea);
     RegisterSpellScript(spell_evo_azure_strike);
     RegisterSpellScript(spell_evo_glide);
