@@ -31,6 +31,7 @@
 #include "SpellScript.h"
 #include "SpellDefines.h"
 
+
 enum EvokerSpells
 {
     SPELL_EVOKER_ANIMOSITY                 = 375797,
@@ -55,6 +56,7 @@ enum EvokerSpells
     SPELL_EVOKER_ECHO                      = 364343,
     SPELL_EVOKER_DREAM_PROJECTION          = 377509,
     SPELL_EVOKER_SKYWARD_ASCENT            = 367033,
+    SPELL_EVOKER_FIREBREATH                = 357209,
     SPELL_EVOKER_SURGE_FORWARD             = 369541
 };
 
@@ -211,7 +213,7 @@ class spell_evoker_soar : public SpellScript
 
     void HandleOnHit(SpellEffIndex /*effIndex*/)
     {
-        Unit* caster = GetCaster();;
+        Unit* caster = GetCaster();
 
         if (caster == NULL)
             return;
@@ -231,8 +233,65 @@ class spell_evoker_soar : public SpellScript
     }
 };
 
+class spell_evoker_fire_breath : public AuraScript
+{
+    PrepareAuraScript(spell_evoker_fire_breath);
+
+    void HandleAfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        Unit* caster = GetCaster();
+
+        if (caster == NULL || GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_CANCEL)
+            return;
+
+        caster->CastSpell(caster, SPELL_EVOKER_FIREBREATH, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_evoker_fire_breath::HandleAfterRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+//hack 351239
+class spell_cosmic_evoker_visage : public SpellScript
+{
+    PrepareSpellScript(spell_cosmic_evoker_visage);
+
+    void HandleCast()
+    {
+        Unit* caster = GetCaster();
+
+        if (caster->HasAura(SPELL_EVOKER_VISAGE_AURA))
+        {
+            // Dracthyr Form
+            caster->RemoveAurasDueToSpell(SPELL_EVOKER_VISAGE_AURA);
+            caster->CastSpell(caster, 97709, true);
+            caster->SendPlaySpellVisual(caster, 118328, 0, 0, 60, false);
+            caster->SetDisplayId(108590);
+        }
+        else
+        {
+            // Visage Form
+            if (caster->HasAura(97709))
+                caster->RemoveAurasDueToSpell(97709);
+
+            caster->CastSpell(caster, SPELL_EVOKER_VISAGE_AURA, true);
+            caster->SendPlaySpellVisual(caster, 118328, 0, 0, 60, false);
+            caster->SetDisplayId(104597);
+        }
+    }
+
+    void Register() override
+    {
+        OnCast += SpellCastFn(spell_cosmic_evoker_visage::HandleCast);
+    }
+};
+
 void AddSC_evoker_spell_scripts()
 {
+    RegisterSpellScript(spell_cosmic_evoker_visage);
+    RegisterSpellScript(spell_evoker_fire_breath);
     RegisterSpellScript(spell_evoker_just_in_time);
     RegisterSpellScript(spell_evoker_panacea);
     RegisterSpellScript(spell_evo_azure_strike);
