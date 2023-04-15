@@ -196,9 +196,9 @@ class spell_evoker_just_in_time : public SpellScript
 
     void HandleOnCast()
     {
-        Player* caster = GetCaster()->ToPlayer();
+        Unit* caster = GetCaster();
         if (Aura* aura = caster->GetAura(SPELL_EVOKER_JUST_IN_TIME))
-            caster->GetSpellHistory()->ModifyCooldown(SPELL_EVOKER_BRONZE_TIME_DILATION, -Seconds(-GetEffectInfo(EFFECT_0).BasePoints));
+            caster->GetSpellHistory()->ModifyCooldown(SPELL_EVOKER_BRONZE_TIME_DILATION, Seconds(-GetEffectInfo(EFFECT_0).BasePoints));
     }
 
     void Register() override
