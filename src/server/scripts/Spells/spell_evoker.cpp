@@ -42,12 +42,20 @@ enum EvokerSpells
     SPELL_EVOKER_LIVING_FLAME_DAMAGE       = 361500,
     SPELL_EVOKER_LIVING_FLAME_HEAL         = 361509,
     SPELL_EVOKER_SOAR_RACIAL               = 369536,
-    SPELL_EVOKER_Visage                    = 372014,
+    SPELL_EVOKER_VISAGE                    = 372014,
+    SPELL_EVOKER_VISAGE_AURA               = 372014,
     SPELL_EVOKER_CALL_OF_YSERA_AURA        = 373835,
     SPELL_EVOKER_JUST_IN_TIME              = 376204,
     SPELL_EVOKER_BRONZE_TIME_DILATION      = 357170,
     SPELL_EVOKER_PANACEA                   = 387761,
-    SPELL_EVOKER_PANACEA_HEAL              = 387763
+    SPELL_EVOKER_PANACEA_HEAL              = 387763,
+    SPELL_EVOKER_GREEN_EMERALD_BLOSSOM     = 355913,
+    SPELL_EVOKER_BLUE_DISINTEGRATE         = 356995,
+    SPELL_EVOKER_BLUE_DISINTEGRATE_2       = 369093,
+    SPELL_EVOKER_ECHO                      = 364343,
+    SPELL_EVOKER_DREAM_PROJECTION          = 377509,
+    SPELL_EVOKER_SKYWARD_ASCENT            = 367033,
+    SPELL_EVOKER_SURGE_FORWARD             = 369541
 };
 
 // 362969 - Azure Strike (blue)
@@ -85,7 +93,7 @@ class spell_evo_glide : public SpellScript
         if (!caster->IsFalling())
             return SPELL_FAILED_NOT_ON_GROUND;
 
-        if (caster->HasAura(SPELL_EVOKER_Visage))
+        if (caster->HasAura(SPELL_EVOKER_VISAGE))
             return SPELL_FAILED_DONT_REPORT;
 
         return SPELL_CAST_OK;
@@ -172,16 +180,54 @@ class spell_evoker_just_in_time : public SpellScript
 {
     PrepareSpellScript(spell_evoker_just_in_time);
 
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo
+        ({
+            SPELL_EVOKER_GREEN_EMERALD_BLOSSOM,
+            SPELL_EVOKER_BLUE_DISINTEGRATE,
+            SPELL_EVOKER_BLUE_DISINTEGRATE_2,
+            SPELL_EVOKER_ECHO,
+            SPELL_EVOKER_DREAM_PROJECTION
+            });
+    }
+
     void HandleOnCast()
     {
-        Unit* caster = GetCaster();
+        Player* caster = GetCaster()->ToPlayer();
         if (Aura* aura = caster->GetAura(SPELL_EVOKER_JUST_IN_TIME))
-            caster->GetSpellHistory()->ModifyCooldown(SPELL_EVOKER_BRONZE_TIME_DILATION, Seconds(2));
+            caster->GetSpellHistory()->ModifyCooldown(SPELL_EVOKER_BRONZE_TIME_DILATION, -Seconds(-GetEffectInfo(EFFECT_0).BasePoints));
     }
 
     void Register() override
     {
         OnCast += SpellCastFn(spell_evoker_just_in_time::HandleOnCast);
+    }
+};
+
+class spell_evoker_soar : public SpellScript
+{
+    PrepareSpellScript(spell_evoker_soar);
+
+    void HandleOnHit(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();;
+
+        if (caster == NULL)
+            return;
+
+        // Increase flight speed by 830540%
+        caster->SetSpeedRate(MOVE_FLIGHT, 83054.0f);
+
+        Player* player = GetHitPlayer();
+        // Add "Skyward Ascent" and "Surge Forward" to the caster's spellbook
+        player->LearnSpell(SPELL_EVOKER_SKYWARD_ASCENT, false);
+        player->LearnSpell(SPELL_EVOKER_SURGE_FORWARD, false);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_evoker_soar::HandleOnHit, EFFECT_0, SPELL_EFFECT_DUMMY);
     }
 };
 
