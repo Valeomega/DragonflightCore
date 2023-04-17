@@ -15,8 +15,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "AreaTrigger.h"
-#include "AreaTriggerAI.h"
 #include "CreatureAI.h"
 #include "CreatureAIImpl.h"
 #include "Containers.h"
@@ -26,8 +24,6 @@
 #include "ScriptedCreature.h"
 #include "SpellScript.h"
 #include "SpellAuras.h"
-#include "SharedDefines.h"
-#include "TemporarySummon.h"
 #include "underrot.h"
 
 enum LeaxaSpells
@@ -54,17 +50,17 @@ enum LeaxaEvents
 
 enum LeaxaTexts
 {
-    SAY_AGGRO                       = 0,
-    SAY_SANGUINE_FEAST              = 1,
-    SAY_ROT_AND_WITHER              = 2,
-    SAY_BLOOD_MIRROR                = 3,
-    SAY_ANNOUNCE_BLOOD_MIRROR       = 4,
-    SAY_DEATH                       = 5
+    SAY_AGGRO                   = 0,
+    SAY_SANGUINE_FEAST          = 1,
+    SAY_ROT_AND_WITHER          = 2,
+    SAY_BLOOD_MIRROR            = 3,
+    SAY_ANNOUNCE_BLOOD_MIRROR   = 4,
+    SAY_DEATH                   = 5
 };
 
 enum LeaxaAnimKits
 {
-    BLOOD_EFFIGY_DEATH              = 9798
+    ANIMKIT_BLOOD_EFFIGY_DEATH = 9798
 };
 
 // 131318 - Elder Leaxa
@@ -76,13 +72,13 @@ struct boss_elder_leaxa : public BossAI
     {
         _JustDied();
         instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+
         Talk(SAY_DEATH);
     }
 
     void EnterEvadeMode(EvadeReason /*why*/) override
     {
         instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
-
         summons.DespawnAll();
         _EnterEvadeMode();
         _DespawnAtEvade();
@@ -91,19 +87,18 @@ struct boss_elder_leaxa : public BossAI
     void JustEngagedWith(Unit* who) override
     {
         BossAI::JustEngagedWith(who);
+        instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me, 1);
+
         Talk(SAY_AGGRO);
         me->SetAIAnimKitId(0);
         events.ScheduleEvent(EVENT_BLOOD_BOLT, 1s);
         events.ScheduleEvent(EVENT_SANGUINE_FEAST, 8s);
         events.ScheduleEvent(EVENT_CREEPING_ROT, 12s);
         events.ScheduleEvent(EVENT_BLOOD_MIRROR, 17s);
-        instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me, 1);
     }
 
     void UpdateAI(uint32 diff) override
     {
-        scheduler.Update(diff);
-
         if (!UpdateVictim())
             return;
 
@@ -112,36 +107,30 @@ struct boss_elder_leaxa : public BossAI
         if (me->HasUnitState(UNIT_STATE_CASTING))
             return;
 
-        while (uint32 eventId = events.ExecuteEvent())
+        switch (events.ExecuteEvent())
         {
-            switch (eventId)
-            {
-                case EVENT_BLOOD_BOLT:
-                    DoCastVictim(SPELL_BLOOD_BOLT);
-                    events.ScheduleEvent(EVENT_BLOOD_BOLT, 6s);
-                    break;
-                case EVENT_SANGUINE_FEAST:
-                    Talk(SAY_SANGUINE_FEAST);
-                    DoCastAOE(SPELL_SANGUINE_FEAST);
-                    events.ScheduleEvent(EVENT_SANGUINE_FEAST, 30s);
-                    break;
-                case EVENT_CREEPING_ROT:
-                    Talk(SAY_ROT_AND_WITHER);
-                    DoCastAOE(SPELL_CREEPING_ROT_SELECTOR);
-                    events.ScheduleEvent(EVENT_CREEPING_ROT, 16s);
-                    break;
-                case EVENT_BLOOD_MIRROR:
-                    Talk(SAY_BLOOD_MIRROR);
-                    Talk(SAY_ANNOUNCE_BLOOD_MIRROR);
-                    DoCastSelf(SPELL_BLOOD_MIRROR_SELECTOR);
-                    events.ScheduleEvent(EVENT_BLOOD_MIRROR, 47s);
-                    break;
-                default:
-                    break;
-            }
-
-            if (me->HasUnitState(UNIT_STATE_CASTING))
-                return;
+            case EVENT_BLOOD_BOLT:
+                DoCastVictim(SPELL_BLOOD_BOLT);
+                events.ScheduleEvent(EVENT_BLOOD_BOLT, 6s);
+                break;
+            case EVENT_SANGUINE_FEAST:
+                Talk(SAY_SANGUINE_FEAST);
+                DoCastAOE(SPELL_SANGUINE_FEAST);
+                events.ScheduleEvent(EVENT_SANGUINE_FEAST, 30s);
+                break;
+            case EVENT_CREEPING_ROT:
+                Talk(SAY_ROT_AND_WITHER);
+                DoCastAOE(SPELL_CREEPING_ROT_SELECTOR);
+                events.ScheduleEvent(EVENT_CREEPING_ROT, 16s);
+                break;
+            case EVENT_BLOOD_MIRROR:
+                Talk(SAY_BLOOD_MIRROR);
+                Talk(SAY_ANNOUNCE_BLOOD_MIRROR);
+                DoCastSelf(SPELL_BLOOD_MIRROR_SELECTOR);
+                events.ScheduleEvent(EVENT_BLOOD_MIRROR, 47s);
+                break;
+            default:
+                break;
         }
 
         DoMeleeAttackIfReady();
@@ -162,7 +151,7 @@ struct npc_blood_effigy : public ScriptedAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        me->SetAIAnimKitId(BLOOD_EFFIGY_DEATH);
+        me->SetAIAnimKitId(ANIMKIT_BLOOD_EFFIGY_DEATH);
         me->DespawnOrUnsummon(3s);
     }
 
@@ -176,28 +165,22 @@ struct npc_blood_effigy : public ScriptedAI
         if (me->HasUnitState(UNIT_STATE_CASTING))
             return;
 
-        while (uint32 eventId = _events.ExecuteEvent())
+        switch (_events.ExecuteEvent())
         {
-            switch (eventId)
-            {
-                case EVENT_BLOOD_BOLT:
-                    DoCastVictim(SPELL_BLOOD_BOLT);
-                    _events.ScheduleEvent(EVENT_BLOOD_BOLT, 2s);
-                    break;
-                case EVENT_SANGUINE_FEAST:
-                    DoCastAOE(SPELL_SANGUINE_FEAST);
-                    _events.ScheduleEvent(EVENT_SANGUINE_FEAST, 30s);
-                    break;
-                case EVENT_CREEPING_ROT:
-                    DoCastAOE(SPELL_CREEPING_ROT_SELECTOR);
-                    _events.ScheduleEvent(EVENT_CREEPING_ROT, 16s);
-                    break;
-                default:
-                    break;
-            }
-
-            if (me->HasUnitState(UNIT_STATE_CASTING))
-                return;
+            case EVENT_BLOOD_BOLT:
+                DoCastVictim(SPELL_BLOOD_BOLT);
+                _events.ScheduleEvent(EVENT_BLOOD_BOLT, 2s);
+                break;
+            case EVENT_SANGUINE_FEAST:
+                DoCastAOE(SPELL_SANGUINE_FEAST);
+                _events.ScheduleEvent(EVENT_SANGUINE_FEAST, 30s);
+                break;
+            case EVENT_CREEPING_ROT:
+                DoCastAOE(SPELL_CREEPING_ROT_SELECTOR);
+                _events.ScheduleEvent(EVENT_CREEPING_ROT, 16s);
+                break;
+            default:
+                break;
         }
 
         DoMeleeAttackIfReady();
@@ -232,10 +215,15 @@ class spell_sanguine_feast_selector : public SpellScript
 {
     PrepareSpellScript(spell_sanguine_feast_selector);
 
+    bool Validate(SpellInfo const* spellInfo) override
+    {
+        return !spellInfo->GetEffects().empty() && ValidateSpellInfo({ uint32(spellInfo->GetEffect(EFFECT_0).CalcValue()) });
+    }
+
     void HandleHit(SpellEffIndex /*effIndex*/)
     {
-        if (Unit* target = GetHitUnit())
-            GetCaster()->CastSpell(target, GetEffectValue());
+        Unit* caster = GetCaster();
+        caster->CastSpell(GetHitUnit(), uint32(GetEffectInfo().CalcValue(caster)));
     }
 
     void Register() override
@@ -251,21 +239,16 @@ class spell_creeping_rot_selector : public SpellScript
 
     static constexpr float SPAWN_DISTANCE = 5.0f;
 
-    // spell has SPELL_ATTR3_ONLY_ON_PLAYER, but its selecting the mirrors somehow
-    void FilterTargets(std::list<WorldObject*>& targets)
-    {
-        targets.remove_if([](WorldObject* target) -> bool
-        {
-            return !target->IsPlayer();
-        });
-    }
-
     void HandleHit(SpellEffIndex /*effIndex*/)
     {
         Unit* caster = GetCaster();
+        Unit* target = GetHitUnit();
 
-        if (Unit* target = GetHitUnit())
-            caster->CastSpell(target, SPELL_CREEPING_ROT_SUMMON);
+        // make sure spell is cast towards target and caster looks towards target
+        caster->SetInFront(target);
+        caster->SetFacingToObject(target);
+
+        caster->CastSpell(target, SPELL_CREEPING_ROT_SUMMON);
 
         float angle = caster->GetOrientation();
         float destX = caster->GetPositionX() + SPAWN_DISTANCE * std::cos(angle);
@@ -277,7 +260,6 @@ class spell_creeping_rot_selector : public SpellScript
 
     void Register() override
     {
-        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_creeping_rot_selector::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
         OnEffectHitTarget += SpellEffectFn(spell_creeping_rot_selector::HandleHit, EFFECT_0, SPELL_EFFECT_DUMMY);
     }
 };
@@ -307,13 +289,13 @@ class spell_creeping_rot_aura : public AuraScript
 
 static Position const MirrorSpawnPositions[] =
 {
-    { 879.79865f,   1222.6233f, 56.47815f  },
-    { 856.184f,     1232.5435f, 56.52007f  },
-    { 859.34204f,   1238.0243f, 56.520065f },
-    { 857.8333f,    1220.6545f, 56.468567f },
-    { 876.17365f,   1240.2848f, 56.409615f },
-    { 864.25867f,   1240.5903f, 56.520065f },
-    { 863.1042f,    1218.0591f, 56.468765f },
+    { 879.79865f, 1222.6233f, 56.47815f  },
+    { 856.184f,   1232.5435f, 56.52007f  },
+    { 859.34204f, 1238.0243f, 56.520065f },
+    { 857.8333f,  1220.6545f, 56.468567f },
+    { 876.17365f, 1240.2848f, 56.409615f },
+    { 864.25867f, 1240.5903f, 56.520065f },
+    { 863.1042f,  1218.0591f, 56.468765f }
 };
 
 // 264603 - Blood Mirror
@@ -365,7 +347,7 @@ class spell_taint_of_ghuun : public SpellScript
 
     void Register() override
     {
-        OnHit += SpellHitFn(spell_taint_of_ghuun::HandleHit);
+        AfterHit += SpellHitFn(spell_taint_of_ghuun::HandleHit);
     }
 };
 
