@@ -5228,6 +5228,159 @@ class spell_gen_despawn_all_summons_owned_by_caster : public SpellScript
     }
 };
 
+enum SkinningLearningSpell
+{
+     SPELL_CLASSIC_SKINNING      = 265856,
+     SPELL_OUTLAND_SKINNING      = 265858,
+     SPELL_NORTHREND_SKINNING    = 265860,
+     SPELL_CATACLYSM_SKINNING    = 265862,
+     SPELL_PANDARIA_SKINNING     = 265864,
+     SPELL_DRAENOR_SKINNING      = 265866,
+     SPELL_LEGION_SKINNING       = 265868,
+     SPELL_KUL_TIRAN_SKINNING    = 265870,
+     SPELL_ZANDALARI_SKINNING    = 265872,
+     SPELL_SHADOWLANDS_SKINNING  = 308570,
+     SPELL_DRAGON_ISLES_SKINNING = 366263
+};
+
+// 8613 - Skinning
+class spell_gen_skinning : public SpellScript
+{
+    PrepareSpellScript(spell_gen_skinning);
+
+    bool Validate(SpellInfo const* /*spell*/) override
+    {
+        return ValidateSpellInfo(
+        {
+            SPELL_OUTLAND_SKINNING,
+            SPELL_NORTHREND_SKINNING,
+            SPELL_CATACLYSM_SKINNING,
+            SPELL_PANDARIA_SKINNING,
+            SPELL_DRAENOR_SKINNING,
+            SPELL_KUL_TIRAN_SKINNING,
+            SPELL_ZANDALARI_SKINNING,
+            SPELL_SHADOWLANDS_SKINNING,
+            SPELL_DRAGON_ISLES_SKINNING
+        });
+    }
+
+    void HandleSkinningEffect(SpellEffIndex /*effIndex*/)
+    {
+        Player* player = GetCaster()->ToPlayer();
+        if (!player)
+            return;
+
+        ContentTuningEntry const* contentTuning = sContentTuningStore.LookupEntry(GetHitUnit()->GetContentTuning());
+        if (!contentTuning)
+            return;
+
+        uint32 skinningSkill = player->GetProfessionSkillForExp(SKILL_SKINNING, contentTuning->ExpansionID);
+        if (!skinningSkill)
+            return;
+
+        // Autolearning missing skinning skill (Dragonflight)
+        auto getSkinningLearningSpellBySkill = [&]() -> uint32
+        {
+            switch (skinningSkill)
+            {
+                case SKILL_OUTLAND_SKINNING:      return SPELL_OUTLAND_SKINNING;
+                case SKILL_NORTHREND_SKINNING:    return SPELL_NORTHREND_SKINNING;
+                case SKILL_CATACLYSM_SKINNING:    return SPELL_CATACLYSM_SKINNING;
+                case SKILL_PANDARIA_SKINNING:     return SPELL_PANDARIA_SKINNING;
+                case SKILL_DRAENOR_SKINNING:      return SPELL_DRAENOR_SKINNING;
+                case SKILL_KUL_TIRAN_SKINNING:    return player->GetTeam() == ALLIANCE ? SPELL_KUL_TIRAN_SKINNING : SPELL_ZANDALARI_SKINNING;
+                case SKILL_SHADOWLANDS_SKINNING:  return SPELL_SHADOWLANDS_SKINNING;
+                case SKILL_DRAGON_ISLES_SKINNING: return SPELL_DRAGON_ISLES_SKINNING;
+                case SKILL_CLASSIC_SKINNING:      // Trainer only
+                case SKILL_LEGION_SKINNING:       // Quest only
+                default: break;
+            }
+
+            return 0;
+        };
+
+        if (!player->HasSkill(skinningSkill))
+            if (uint32 spellId = getSkinningLearningSpellBySkill())
+                player->CastSpell(nullptr, spellId, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_gen_skinning::HandleSkinningEffect, EFFECT_0, SPELL_EFFECT_SKINNING);
+    }
+};
+
+enum BloodlustExhaustionSpell : uint32
+{
+    SPELL_SHAMAN_SATED               = 57724, // Bloodlust
+    SPELL_SHAMAN_EXHAUSTION          = 57723, // Heroism, Drums
+    SPELL_MAGE_TEMPORAL_DISPLACEMENT = 80354,
+    SPELL_HUNTER_FATIGUED            = 264689,
+    SPELL_EVOKER_EXHAUSTION          = 390435,
+};
+
+// 2825 - Bloodlust
+// 32182 - Heroism
+// 80353 - Time Warp
+// 264667 - Primal Rage
+// 390386 - Fury of the Aspects
+// 146555 - Drums of Rage
+// 178207 - Drums of Fury
+// 230935 - Drums of the Mountain
+// 256740 - Drums of the Maelstrom
+// 309658 - Drums of Deathly Ferocity
+// 381301 - Feral Hide Drums
+class spell_gen_bloodlust : public SpellScript
+{
+    PrepareSpellScript(spell_gen_bloodlust);
+public:
+    spell_gen_bloodlust(uint32 exhaustionSpellId) : _exhaustionSpellId(exhaustionSpellId) { }
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo(
+        {
+            SPELL_SHAMAN_SATED,
+            SPELL_SHAMAN_EXHAUSTION,
+            SPELL_MAGE_TEMPORAL_DISPLACEMENT,
+            SPELL_HUNTER_FATIGUED,
+            SPELL_EVOKER_EXHAUSTION
+        });
+    }
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([](WorldObject* target) -> bool
+        {
+            Unit* unit = target->ToUnit();
+            if (!unit)
+                return true;
+
+            return unit->HasAura(SPELL_SHAMAN_SATED)
+                || unit->HasAura(SPELL_SHAMAN_EXHAUSTION)
+                || unit->HasAura(SPELL_MAGE_TEMPORAL_DISPLACEMENT)
+                || unit->HasAura(SPELL_HUNTER_FATIGUED)
+                || unit->HasAura(SPELL_EVOKER_EXHAUSTION);
+        });
+    }
+
+    void HandleHit(SpellEffIndex /*effIndex*/)
+    {
+        Unit* target = GetHitUnit();
+        target->CastSpell(target, _exhaustionSpellId, true);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_gen_bloodlust::FilterTargets, EFFECT_0, TARGET_UNIT_CASTER_AREA_RAID);
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_gen_bloodlust::FilterTargets, EFFECT_1, TARGET_UNIT_CASTER_AREA_RAID);
+        OnEffectHitTarget += SpellEffectFn(spell_gen_bloodlust::HandleHit, EFFECT_0, SPELL_EFFECT_APPLY_AURA);
+    }
+
+private:
+    uint32 _exhaustionSpellId;
+};
+
 void AddSC_generic_spell_scripts()
 {
     RegisterSpellScript(spell_gen_absorb0_hitlimit1);
@@ -5389,4 +5542,11 @@ void AddSC_generic_spell_scripts()
     RegisterSpellScript(spell_gen_eject_passengers_3_8);
     RegisterSpellScript(spell_gen_reverse_cast_target_to_caster_triggered);
     RegisterSpellScript(spell_gen_despawn_all_summons_owned_by_caster);
+    RegisterSpellScript(spell_gen_skinning);
+    RegisterSpellScriptWithArgs(spell_gen_bloodlust, "spell_sha_bloodlust", SPELL_SHAMAN_SATED);
+    RegisterSpellScriptWithArgs(spell_gen_bloodlust, "spell_sha_heroism", SPELL_SHAMAN_EXHAUSTION);
+    RegisterSpellScriptWithArgs(spell_gen_bloodlust, "spell_mage_time_warp", SPELL_MAGE_TEMPORAL_DISPLACEMENT);
+    RegisterSpellScriptWithArgs(spell_gen_bloodlust, "spell_hun_primal_rage", SPELL_HUNTER_FATIGUED);
+    RegisterSpellScriptWithArgs(spell_gen_bloodlust, "spell_evo_fury_of_the_aspects", SPELL_EVOKER_EXHAUSTION);
+    RegisterSpellScriptWithArgs(spell_gen_bloodlust, "spell_item_bloodlust_drums", SPELL_SHAMAN_EXHAUSTION);
 }

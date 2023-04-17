@@ -2790,6 +2790,8 @@ void Spell::TargetInfo::DoDamageAndTriggers(Spell* spell)
                 if (Creature* victimCreature = damageInfo.target->ToCreature())
                     damageInfo.damage = victimCreature->CalculateDamageForSparring(damageInfo.attacker, damageInfo.damage);
 
+                spell->m_damage = damageInfo.damage;
+
                 caster->DealSpellDamage(&damageInfo, true);
 
                 // Send log damage message to client
@@ -6974,8 +6976,7 @@ SpellCastResult Spell::CheckRange(bool strict) const
     if (!strict && m_casttime == 0)
         return SPELL_CAST_OK;
 
-    float minRange, maxRange;
-    std::tie(minRange, maxRange) = GetMinMaxRange(strict);
+    auto [minRange, maxRange] = GetMinMaxRange(strict);
 
     // dont check max_range to strictly after cast
     if (m_spellInfo->RangeEntry && m_spellInfo->RangeEntry->Flags != SPELL_RANGE_MELEE && !strict)
