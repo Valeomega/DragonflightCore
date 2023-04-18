@@ -22,6 +22,7 @@
 #include "SpellScript.h"
 #include "MotionMaster.h"
 #include "Conversation.h"
+#include "Containers.h"
 #include "ObjectAccessor.h"
 #include "CreatureAIImpl.h"
 #include "TemporarySummon.h"
