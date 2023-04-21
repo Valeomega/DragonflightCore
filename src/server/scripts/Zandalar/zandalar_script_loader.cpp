@@ -20,7 +20,7 @@
 // Underrot
 void AddSC_instance_underrot();
 void AddSC_boss_elder_leaxa();
-void AddSC_boss_cragmaw_infested();
+void AddSC_boss_cragmaw_the_infested();
 
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
@@ -29,5 +29,5 @@ void AddZandalarScripts()
     // Underrot
     AddSC_instance_underrot();
     AddSC_boss_elder_leaxa();
-	AddSC_boss_cragmaw_infested();
+	AddSC_boss_cragmaw_the_infested();
 }

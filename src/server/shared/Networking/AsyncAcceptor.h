@@ -58,7 +58,7 @@ public:
                 {
                     socket->non_blocking(true);
 
-                    //acceptCallback(std::move(*socket), threadIndex);
+                    acceptCallback(std::move(*socket), threadIndex);
                 }
                 catch (boost::system::system_error const& err)
                 {
