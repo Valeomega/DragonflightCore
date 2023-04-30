@@ -1552,6 +1552,18 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     return true;
 }
 
+bool Player::TeleportTo(uint32 mapid, Position const& pos, uint32 options /*= 0*/, uint32 optionParam /*= 0*/)
+{
+    WorldLocation loc(mapid);
+    loc.Relocate(pos);
+    return TeleportTo(loc, options, optionParam);
+}
+
+bool Player::SeamlessTeleportToMap(uint32 mapid, uint32 options /*= 0*/)
+{
+    return TeleportTo(mapid, GetPosition(), options | TELE_TO_SEAMLESS);
+}
+
 bool Player::TeleportTo(WorldLocation const& loc, uint32 options /*= 0*/, Optional<uint32> instanceId /*= {}*/)
 {
     return TeleportTo(loc.GetMapId(), loc.GetPositionX(), loc.GetPositionY(), loc.GetPositionZ(), loc.GetOrientation(), options, instanceId);
@@ -28383,6 +28395,25 @@ void Player::SendMovementSetCollisionHeight(float height, WorldPackets::Movement
     updateCollisionHeight.Height = height;
     updateCollisionHeight.Scale = GetObjectScale();
     SendMessageToSet(updateCollisionHeight.Write(), false);
+}
+
+void Player::AddMovieDelayedAction(uint32 movieId, std::function<void()>&& function)
+{
+    MovieDelayedActions.push_back(std::pair<uint32, std::function<void()>>(movieId, function));
+}
+
+void Player::RemoveMovieDelayedAction(uint32 movieId)
+{
+    auto itr = std::find_if(MovieDelayedActions.begin(), MovieDelayedActions.end(), [movieId](const std::pair<uint32, std::function<void()>>& elem) -> bool
+        {
+            return elem.first == movieId;
+        });
+
+    if (itr != MovieDelayedActions.end())
+    {
+        (*itr).second = nullptr;
+        MovieDelayedActions.erase(itr);
+    }
 }
 
 void Player::SendPlayerChoice(ObjectGuid sender, int32 choiceId)
