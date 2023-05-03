@@ -78,6 +78,15 @@ enum RogueSpells
     SPELL_ROGUE_VENOMOUS_WOUNDS                     = 79134,
 };
 
+enum CheatDeath
+{
+    SPELL_ROGUE_CHEAT_DEATH = 31230,
+    SPELL_ROGUE_CHEAT_DEATH_ANIM = 31231,
+    SPELL_ROGUE_CHEAT_DEATH_DMG_REDUC = 45182,
+    SPELL_ROGUE_CHEAT_DEATH_CD_AURA = 45181,
+    SPELL_ROGUE_CHEAT_DEATH_COOLDOWN = 45181
+};
+
 /* Returns true if the spell is a finishing move.
  * A finishing move is a spell that cost combo points */
 Optional<int32> GetFinishingMoveCPCost(Spell const* spell)
@@ -130,6 +139,11 @@ class spell_rog_backstab : public SpellScript
 class spell_rog_blade_flurry : public AuraScript
 {
     PrepareAuraScript(spell_rog_blade_flurry);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_ROGUE_BLADE_FLURRY_EXTRA_ATTACK });
+    }
 
     bool CheckProc(ProcEventInfo& eventInfo)
     {
@@ -510,7 +524,7 @@ class spell_rog_restless_blades : public AuraScript
     {
         if (Optional<int32> spentCP = GetFinishingMoveCPCost(procInfo.GetProcSpell()))
         {
-            int32 cdExtra = -(float(aurEff->GetAmount() * *spentCP) * 0.1f);
+            int32 cdExtra = -(aurEff->GetAmount() * *spentCP * 0.1f);
 
             SpellHistory* history = GetTarget()->GetSpellHistory();
             for (uint32 spellId : Spells)
@@ -595,19 +609,21 @@ class spell_rog_rupture : public AuraScript
         {
             canBeRecalculated = false;
 
-            float const attackpowerPerCombo[6] =
+            float const attackpowerPerCombo[8] =
             {
-                0.0f,
-                0.015f,         // 1 point:  ${($m1 + $b1*1 + 0.015 * $AP) * 4} damage over 8 secs
-                0.024f,         // 2 points: ${($m1 + $b1*2 + 0.024 * $AP) * 5} damage over 10 secs
-                0.03f,          // 3 points: ${($m1 + $b1*3 + 0.03 * $AP) * 6} damage over 12 secs
-                0.03428571f,    // 4 points: ${($m1 + $b1*4 + 0.03428571 * $AP) * 7} damage over 14 secs
-                0.0375f         // 5 points: ${($m1 + $b1*5 + 0.0375 * $AP) * 8} damage over 16 secs
+                    0.0f,
+                    0.47712f * 2, // 1 point:  ${0.47712 * $AP * 2} damage over 8 secs
+                    0.47712f * 3, // 2 points: ${0.47712 * $AP * 3} damage over 12 secs
+                    0.47712f * 4, // 3 points: ${0.47712 * $AP * 4} damage over 16 secs
+                    0.47712f * 5, // 4 points: ${0.47712 * $AP * 5} damage over 20 secs
+                    0.47712f * 6, // 5 points: ${0.47712 * $AP * 6} damage over 24 secs
+                    0.47712f * 7, // 6 points: ${0.47712 * $AP * 7} damage over 28 secs
+                    0.47712f * 8  // 7 points: ${0.47712 * $AP * 8} damage over 32 secs
             };
 
             uint32 cp = caster->GetComboPoints();
-            if (cp > 5)
-                cp = 5;
+            if (cp > 7)
+                cp = 7;
 
             amount += int32(caster->GetTotalAttackPowerValue(BASE_ATTACK) * attackpowerPerCombo[cp]);
         }
@@ -632,8 +648,8 @@ class spell_rog_rupture : public AuraScript
         if (!cost)
             return;
 
-        float pct = float(aura->GetDuration()) / float(aura->GetMaxDuration());
-        int32 extraAmount = float(cost->Amount) * pct;
+        float pct = aura->GetDuration() / float(aura->GetMaxDuration());
+        int32 extraAmount = cost->Amount * pct;
         caster->ModifyPower(POWER_ENERGY, extraAmount);
     }
 
@@ -789,9 +805,13 @@ class spell_rog_stealth : public AuraScript
         Unit* target = GetTarget();
 
         // Master of Subtlety
-        if (AuraEffect* masterOfSubtletyPassive = GetTarget()->GetAuraEffect(SPELL_ROGUE_MASTER_OF_SUBTLETY_PASSIVE, EFFECT_0))
+        AuraEffect* masterOfSubtletyPassive = GetTarget()->GetAuraEffect(SPELL_ROGUE_MASTER_OF_SUBTLETY_PASSIVE, EFFECT_0);
+
+        if (masterOfSubtletyPassive)
         {
-            if (Aura* masterOfSubtletyAura = GetTarget()->GetAura(SPELL_ROGUE_MASTER_OF_SUBTLETY_DAMAGE_PERCENT))
+            Aura* masterOfSubtletyAura = GetTarget()->GetAura(SPELL_ROGUE_MASTER_OF_SUBTLETY_DAMAGE_PERCENT);
+
+            if (masterOfSubtletyAura)
             {
                 masterOfSubtletyAura->SetMaxDuration(masterOfSubtletyPassive->GetAmount());
                 masterOfSubtletyAura->RefreshDuration();
@@ -1022,6 +1042,53 @@ class spell_rog_venomous_wounds : public AuraScript
     void Register() override
     {
         OnEffectProc += AuraEffectProcFn(spell_rog_venomous_wounds::HandleProc, EFFECT_1, SPELL_AURA_DUMMY);
+    }
+};
+
+class spell_rog_cheat_death : public AuraScript
+{
+    PrepareAuraScript(spell_rog_cheat_death);
+
+    bool Load() override
+    {
+        return GetUnitOwner()->GetTypeId() == TYPEID_PLAYER;
+    }
+
+    void CalculateAmount(AuraEffect const* /*aurEff*/, int32& amount, bool & /*canBeRecalculated*/)
+    {
+        // Set absorbtion amount to unlimited
+        amount = -1;
+    }
+
+    void Absorb(AuraEffect* /*aurEff*/, DamageInfo & dmgInfo, uint32 & absorbAmount)
+    {
+        Player* target = GetTarget()->ToPlayer();
+        if (target->HasAura(SPELL_ROGUE_CHEAT_DEATH_DMG_REDUC))
+        {
+			absorbAmount = CalculatePct(dmgInfo.GetDamage(), 85);
+			return;
+        }
+		else
+		{
+			if (dmgInfo.GetDamage() < target->GetHealth() || target->HasAura(SPELL_ROGUE_CHEAT_DEATH_COOLDOWN))
+			return;
+
+			uint64 health7 = target->CountPctFromMaxHealth(7);
+			target->SetHealth(1);
+			HealInfo healInfo(target, target, health7, GetSpellInfo(), GetSpellInfo()->GetSchoolMask());
+			target->HealBySpell(healInfo);
+			target->CastSpell(target, SPELL_ROGUE_CHEAT_DEATH_ANIM, true);
+			target->CastSpell(target, SPELL_ROGUE_CHEAT_DEATH_DMG_REDUC, true);
+			target->CastSpell(target, SPELL_ROGUE_CHEAT_DEATH_COOLDOWN, true);
+			absorbAmount = dmgInfo.GetDamage();
+		}
+		return;
+	}
+
+    void Register() override
+    {
+        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_rog_cheat_death::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
+        OnEffectAbsorb += AuraEffectAbsorbFn(spell_rog_cheat_death::Absorb, EFFECT_0);
     }
 };
 
